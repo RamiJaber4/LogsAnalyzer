@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log Analyzer Frontend</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f2f5f8;
+            color: #222;
+        }
+        .page {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        header {
+            margin-bottom: 24px;
+        }
+        h1 {
+            margin: 0 0 12px;
+            font-size: 2rem;
+        }
+        p.lead {
+            margin: 0;
+            color: #555;
+        }
+        .panel {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 8px rgba(21, 34, 61, 0.08);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        textarea {
+            width: 100%;
+            min-height: 180px;
+            resize: vertical;
+            border: 1px solid #d7dbe3;
+            border-radius: 8px;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 0.95rem;
+            color: #1d2939;
+            background: #fafbfc;
+        }
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 18px;
+            color: #fff;
+            background: #2563eb;
+            cursor: pointer;
+            font-weight: 700;
+            margin-right: 12px;
+        }
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .buttons {
+            margin-top: 14px;
+        }
+        .status {
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 10px;
+            background: #eef4ff;
+            color: #1f3f7d;
+            border: 1px solid #d2e0ff;
+        }
+        .metrics-grid {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            margin-top: 16px;
+        }
+        .metric-card {
+            border-radius: 12px;
+            background: #f8fbff;
+            padding: 18px;
+            border: 1px solid #e8eef7;
+        }
+        .metric-card strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #334155;
+        }
+        .metric-card span {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #111827;
+        }
+        .note {
+            margin-top: 16px;
+            font-size: 0.95rem;
+            color: #4b5563;
+        }
+        .sample {
+            background: #eef2ff;
+            padding: 12px;
+            border-radius: 10px;
+            margin-top: 10px;
+            border: 1px dashed #c7d2fe;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+        }
+        .stats-table th,
+        .stats-table td {
+            padding: 12px 14px;
+            border: 1px solid #e2e8f0;
+            text-align: left;
+        }
+        .stats-table th {
+            background: #f8fafc;
+            font-weight: 700;
+            color: #1f2937;
+        }
+        .stats-table tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <div class="page">
+        <header>
+            <h1>Log Analyzer Frontend</h1>
+            <p class="lead">Send raw log lines to the backend and view the aggregated metrics.</p>
+        </header>
+ 
+        <section class="panel">
+            <label for="logInput">Enter logs (one log line per row)</label>
+            <textarea id="logInput" placeholder="2026-07-16T12:00:00Z,info,auth,105,User login successful\n2026-07-16T12:00:01Z,error,database,240,Failed query"></textarea>
+            <div class="buttons">
+                <button id="sendButton">Send logs</button>
+                <button id="refreshButton">Refresh metrics</button>
+                <button id="resetButton">Reset metrics</button>
+            </div>
+            <div id="status" class="status">Ready to submit logs.</div>
+            <div class="note">
+                Backend endpoints used: <code>/api/recieve-log</code>, <code>/api/show-stats</code>, <code>/api/show-comp-stats</code>, <code>/api/reset-metrics</code>, and <code>/api/health</code> (proxied to the backend server).
+                The proxy server should be started from the frontend directory.
+            </div>
+            <div class="sample">
+Sample log format:
+2026-07-16T12:00:00Z,info,auth,105,User login successful
+2026-07-16T12:01:43Z,error,database,240,Failed query
+            </div>
+        </section>
+ 
+        <section class="panel">
+            <h2>Metrics</h2>
+            <div id="metrics" class="metrics-grid">
+                <div class="metric-card"><strong>Total requests</strong><span id="totalRequests">—</span></div>
+                <div class="metric-card"><strong>Error count</strong><span id="errorCount">—</span></div>
+                <div class="metric-card"><strong>Average response</strong><span id="avgResponse">—</span></div>
+                <div class="metric-card"><strong>Backend health</strong><span id="backendHealth">Unknown</span></div>
+            </div>
+        </section>
+ 
+        <section class="panel">
+            <h2>Component stats</h2>
+            <div class="note">Each row shows component metrics returned from <code>/api/show-comp-stats</code>.</div>
+            <table id="componentStatsTable" class="stats-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Requests</th>
+                        <th>Errors</th>
+                        <th>Avg response</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="4">Loading component stats...</td></tr>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <script>
+        const logInput = document.getElementById('logInput');
+        const status = document.getElementById('status');
+        const sendButton = document.getElementById('sendButton');
+        const refreshButton = document.getElementById('refreshButton');
+        const resetButton = document.getElementById('resetButton');
+        const totalRequests = document.getElementById('totalRequests');
+        const errorCount = document.getElementById('errorCount');
+        const avgResponse = document.getElementById('avgResponse');
+        const backendHealth = document.getElementById('backendHealth');
+        const componentStatsTable = document.getElementById('componentStatsTable');
+ 
+        function setStatus(message, isError = false) {
+            status.textContent = message;
+            status.style.backgroundColor = isError ? '#ffeef0' : '#eef4ff';
+            status.style.color = isError ? '#881a1a' : '#1f3f7d';
+            status.style.borderColor = isError ? '#f8d7da' : '#d2e0ff';
+        }
+ 
+        const API_BASE = '/api';
+        const HEALTH_ENDPOINT = `${API_BASE}/health`;
+        const COMP_STATS_ENDPOINT = `${API_BASE}/show-comp-stats`;
+
+        async function sendLogs() {
+            const payload = logInput.value.trim();
+            if (!payload) {
+                setStatus('Enter at least one log line before sending.', true);
+                return;
+            }
+            sendButton.disabled = true;
+            setStatus('Sending logs to backend...');
+            try {
+                const response = await fetch(`${API_BASE}/recieve-log`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: payload
+                });
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`Backend error: ${response.status} ${response.statusText} ${text}`);
+                }
+                const data = await response.json();
+                setStatus(`Logs sent successfully. Count received by backend: ${data.count}`);
+                await Promise.all([loadMetrics(), loadComponentStats(), checkHealth()]);
+            } catch (error) {
+                setStatus(error.message, true);
+            } finally {
+                sendButton.disabled = false;
+            }
+        }
+
+        async function resetMetrics() {
+            const confirmReset = confirm('Reset all metrics to zero?');
+            if (!confirmReset) {
+                return;
+            }
+            resetButton.disabled = true;
+            setStatus('Resetting metrics...');
+            try {
+                const response = await fetch(`${API_BASE}/reset-metrics`, {
+                    method: 'POST'
+                });
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`Failed to reset metrics: ${response.status} ${response.statusText} ${text}`);
+                }
+                setStatus('Metrics reset successfully.');
+                await Promise.all([loadMetrics(), loadComponentStats(), checkHealth()]);
+            } catch (error) {
+                setStatus(error.message, true);
+            } finally {
+                resetButton.disabled = false;
+            }
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(HEALTH_ENDPOINT);
+                if (!response.ok) {
+                    backendHealth.textContent = `Unavailable (${response.status})`;
+                    return;
+                }
+                const data = await response.json();
+                backendHealth.textContent = data.status === 'ok' ? 'OK' : `Unknown (${JSON.stringify(data)})`;
+            } catch (error) {
+                backendHealth.textContent = 'Unavailable';
+            }
+        }
+ 
+        function normalizeComponentRow(row) {
+            return {
+                component:
+                    row['component: '] ?? row.component ?? row.name ?? 'Unknown',
+                requests:
+                    row.requests ?? row['requests'] ?? row.requestCount ?? row.requests_count ?? 'N/A',
+                errors:
+                    row.errors ?? row['errors'] ?? row.error ?? row.errorCount ?? 'N/A',
+                avgResponse:
+                    row.avg_response ?? row['avg_response'] ?? row.avgResponse ?? row['avg_response_time'] ?? 'N/A'
+            };
+        }
+ 
+        async function loadComponentStats() {
+            try {
+                const response = await fetch(COMP_STATS_ENDPOINT);
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`Failed to load component stats: ${response.status} ${response.statusText} ${text}`);
+                }
+                const payload = await response.json();
+                const rawList = payload['components:'] ?? payload.components ?? [];
+                const components = Array.isArray(rawList) ? rawList.map(normalizeComponentRow) : [];
+                const tbody = componentStatsTable.querySelector('tbody');
+                tbody.innerHTML = '';
+                if (!components.length) {
+                    tbody.innerHTML = '<tr><td colspan="4">No component stats available.</td></tr>';
+                    return;
+                }
+                components.forEach((item) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${item.component}</td>
+                        <td>${item.requests}</td>
+                        <td>${item.errors}</td>
+                        <td>${item.avgResponse}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } catch (error) {
+                const tbody = componentStatsTable.querySelector('tbody');
+                tbody.innerHTML = `<tr><td colspan="4">${error.message}</td></tr>`;
+            }
+        }
+ 
+        function normalizeMetrics(metrics) {
+            return {
+                totalRequests:
+                    metrics['total_requests= '] ?? metrics.total_requests ?? metrics.total_requests_count ?? metrics.totalRequests ?? 'N/A',
+                errorCount:
+                    metrics['errors_count= '] ?? metrics.errors_count ?? metrics.error ?? metrics.errors ?? metrics.errorCount ?? 'N/A',
+                avgResponse:
+                    metrics['avg_response_time= '] ?? metrics.avg_response_time ?? metrics.avg_response ?? metrics.avgResponse ?? 'N/A'
+            };
+        }
+
+        async function loadMetrics() {
+            refreshButton.disabled = true;
+            try {
+                const response = await fetch(`${API_BASE}/show-stats`);
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(`Failed to load metrics: ${response.status} ${response.statusText} ${text}`);
+                }
+                const metrics = normalizeMetrics(await response.json());
+                totalRequests.textContent = metrics.totalRequests;
+                errorCount.textContent = metrics.errorCount;
+                avgResponse.textContent = metrics.avgResponse;
+                setStatus('Metrics loaded successfully.');
+            } catch (error) {
+                setStatus(error.message, true);
+            } finally {
+                refreshButton.disabled = false;
+            }
+        }
+
+        sendButton.addEventListener('click', sendLogs);
+        refreshButton.addEventListener('click', () => Promise.all([loadMetrics(), loadComponentStats(), checkHealth()]));
+        resetButton.addEventListener('click', resetMetrics);
+        window.addEventListener('load', () => {
+            Promise.all([loadMetrics(), loadComponentStats(), checkHealth()]);
+        });
+    </script>
+</body>
+</html>

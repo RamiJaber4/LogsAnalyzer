@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  
+  db:
+    image: mysql:8.0
+    container_name: mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD} 
+      MYSQL_DATABASE: ${MYSQL_DB_NAME}            
+      MYSQL_USER: ${MYSQL_DB_USER}                
+      MYSQL_PASSWORD: ${MYSQL_DB_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_DB_USER}", "-p${MYSQL_DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  app:
+    build: .
+    container_name: fastapi_app
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=db
+      - DB_USER=${MYSQL_DB_USER}
+      - DB_PASSWORD=${MYSQL_DB_PASSWORD}
+      - DB_NAME=${MYSQL_DB_NAME}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    build: ./frontend
+    container_name: log_analyzer_frontend
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      - LOG_ANALYZER_BACKEND=http://app:8000
+      - FRONTEND_PORT=8001
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  mysql_data:

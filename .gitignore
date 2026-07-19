@@ -1,0 +1,34 @@
+# --- Secrets / environment ---
+.env
+*.env
+!.env.example
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.Python
+
+# --- Logs & runtime data ---
+*.log
+logs.log
+
+# --- Database data (if mounted locally) ---
+mysql_data/
+*.sql.bak
+
+# --- IDE / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+docker-compose.override.yaml

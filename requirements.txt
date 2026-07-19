@@ -1,0 +1,8 @@
+pandas
+numpy
+SQLAlchemy
+mysql-connector-python 
+FastAPI
+uvicorn
+dotenv
+logging
