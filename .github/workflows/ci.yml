@@ -21,9 +21,9 @@ jobs:
 
     -name: install dependencies
     run: |
-    python -m pip install --upgrade pip
-    if [ -f requiements.txt ]; then pip install -r requiements.txt;
-    fi pip install pytest  
+      python -m pip install --upgrade pip
+      if [ -f requiements.txt ]; then pip install -r requiements.txt;
+      fi pip install pytest  
 
     -name: Run tests with pytest
     run: |
